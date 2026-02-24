@@ -123,7 +123,7 @@ async def broadcast(data, exclude=None):
 async def main():
     async with websockets.serve(
         handler,
-        "localhost",
+        "0.0.0.0",
         8765,
         max_size=10_000_000  # 10MB limit
 ):
