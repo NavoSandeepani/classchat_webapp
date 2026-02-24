@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ClassChat Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="login-container">
+    <h1>Login</h1>
+
+    <div class="input-group">
+        <label>Enter username</label>
+        <input type="text" id="username" placeholder="Enter username">
+    </div>
+
+    <div class="input-group">
+        <label>Upload profile image</label>
+        <input type="file" id="profileImage" accept="image/*">
+    </div>
+
+    <div class="profile-preview">
+        <img id="preview" src="https://via.placeholder.com/120" alt="Profile Preview">
+    </div>
+
+    <button class="enter-btn">Enter Chat →</button>
+</div>
+
+<script>
+let socket;
+
+// ==========================
+// IMAGE PREVIEW FUNCTION
+// ==========================
+const imageInput = document.getElementById("profileImage");
+const preview = document.getElementById("preview");
+
+imageInput.addEventListener("change", function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        preview.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+// ==========================
+// LOGIN + WEBSOCKET
+// ==========================
+document.querySelector(".enter-btn").addEventListener("click", function() {
+
+    const username = document.getElementById("username").value.trim();
+    const imageFile = document.getElementById("profileImage").files[0];
+
+    if (!username) {
+        alert("Please enter username");
+        return;
+    }
+
+    socket = new WebSocket("ws://localhost:8765");
+
+    socket.onopen = function() {
+
+        if (imageFile) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                sendJoin(username, e.target.result);
+            };
+            reader.readAsDataURL(imageFile);
+        } else {
+            sendJoin(username, "");
+        }
+    };
+
+    socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "error") {
+            alert(data.message);
+            socket.close();
+        }
+
+        if (data.type === "join_success") {
+            localStorage.setItem("username", username);
+            localStorage.setItem("image", preview.src);
+
+            socket.close();
+            window.location.href = "chat.html";
+        }
+    };
+
+    socket.onerror = function() {
+        alert("Connection failed. Make sure server is running.");
+    };
+});
+
+function sendJoin(username, image) {
+    socket.send(JSON.stringify({
+        type: "join",
+        username: username,
+        image: image
+    }));
+}
+</script>
+
+</body>
+</html>

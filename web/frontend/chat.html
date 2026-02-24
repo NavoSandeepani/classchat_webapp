@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>ClassChat Room</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="chat-container">
+
+    <div class="sidebar">
+        <h2>ClassChat</h2>
+        <p class="connected-user">
+            Connected as: <span id="currentUser"></span>
+        </p>
+
+        <h3>Online Users</h3>
+        <ul class="user-list" id="userList"></ul>
+
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="chat-area">
+        <div class="chat-header">
+            <h2>ClassChat Room</h2>
+            <span class="online-count">0 Online</span>
+        </div>
+
+        <div class="messages" id="messages"></div>
+
+        <div class="typing" id="typing"></div>
+
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Type a message...">
+            <button onclick="sendMessage()">Send →</button>
+        </div>
+    </div>
+
+</div>
+
+
+<script>
+let activePrivateUser = null;
+let replyingTo = null;
+function showReplyBox(text) {
+    document.getElementById("replyBox").style.display = "block";
+    document.getElementById("replyText").textContent = text;
+}
+
+function cancelReply() {
+    replyingTo = null;
+    document.getElementById("replyBox").style.display = "none";
+}
+
+// Send message when Enter key pressed
+document.getElementById("messageInput")
+.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        sendMessage();
+    }
+});
+const username = localStorage.getItem("username");
+const image = localStorage.getItem("image");
+
+if (!username) {
+    window.location.href = "login.html";
+}
+
+document.getElementById("currentUser").textContent = username;
+
+let socket = new WebSocket("ws://localhost:8765");
+
+socket.onopen = function() {
+    socket.send(JSON.stringify({
+        type: "join",
+        username: username,
+        image: image
+    }));
+};
+
+socket.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+
+    if (data.type === "user_list") {
+        updateUserList(data.users);
+    }
+
+    if (data.type === "message") {
+        addMessage(data);
+    }
+
+    if (data.type === "typing") {
+        document.getElementById("typing").textContent =
+            data.username + " is typing...";
+}
+
+    if (data.type === "stop_typing") {
+        document.getElementById("typing").textContent = "";
+    }
+};
+
+function updateUserList(users) {
+    const list = document.getElementById("userList");
+    list.innerHTML = "";
+
+    users.forEach(user => {
+
+    const li = document.createElement("li");
+
+    li.innerHTML = `
+        <img src="${user.image}" class="chat-avatar">
+        ${user.username}
+        <span class="online-dot"></span>
+    `;
+
+    li.addEventListener("click", function() {
+        activePrivateUser = user.username;
+        clearMessages();
+        document.querySelector(".chat-title").textContent =
+            "Chat with " + user.username;
+    });
+
+    list.appendChild(li);
+});
+
+    document.querySelector(".online-count").textContent =
+        users.length + " Online";
+}
+
+function sendMessage() {
+
+    const input = document.getElementById("messageInput");
+    const text = input.value.trim();
+
+    if (!text) return;
+
+    socket.send(JSON.stringify({
+        type: "message",
+        text: text,
+        replyTo: replyingTo,
+        privateTo: activePrivateUser
+    }));
+
+    input.value = "";
+    cancelReply();
+}
+function addMessage(data) {
+    const messages = document.getElementById("messages");
+
+    const div = document.createElement("div");
+    div.classList.add("message");
+    div.setAttribute("data-id", data.id);
+
+    const avatar = data.image || "https://via.placeholder.com/35";
+
+    let replyPreview = "";
+
+    if (data.replyTo) {
+        const repliedMsg = document.querySelector(
+            `[data-id="${data.replyTo}"]`
+        );
+
+        if (repliedMsg) {
+            replyPreview = `
+                <div class="reply-preview">
+                    ${repliedMsg.querySelector(".bubble").innerText}
+                </div>
+            `;
+        }
+    }
+
+    if (data.sender === username) {
+        div.classList.add("self");
+        div.innerHTML = `
+            ${replyPreview}
+            <div class="bubble">
+                ${data.text}
+                <div class="time">${data.time}</div>
+            </div>
+            <img src="${avatar}" class="chat-avatar">
+        `;
+    } else {
+        div.classList.add("other");
+        div.innerHTML = `
+            <img src="${avatar}" class="chat-avatar">
+            ${replyPreview}
+            <div class="bubble">
+                ${data.text}
+                <div class="time">${data.time}</div>
+            </div>
+        `;
+    }
+
+    // Right-click to reply
+    div.addEventListener("contextmenu", function(e) {
+        e.preventDefault();
+        replyingTo = data.id;
+        showReplyBox(data.text);
+    });
+
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function logout() {
+    localStorage.clear();
+    socket.close();
+    window.location.href = "login.html";
+}
+let typingTimeout;
+
+// Send typing event when user types
+document.getElementById("messageInput")
+.addEventListener("input", function() {
+
+    socket.send(JSON.stringify({
+        type: "typing"
+    }));
+
+    clearTimeout(typingTimeout);
+
+    typingTimeout = setTimeout(() => {
+        socket.send(JSON.stringify({
+            type: "stop_typing"
+        }));
+    }, 1000);
+});
+function clearMessages() {
+    document.getElementById("messages").innerHTML = "";
+}
+</script>
+
+</body>
+</html>
