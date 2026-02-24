@@ -60,7 +60,7 @@ document.querySelector(".enter-btn").addEventListener("click", function() {
         return;
     }
 
-    socket = new WebSocket("ws://localhost:8765");
+    socket = new WebSocket("ws://172.20.10.3:8765");
 
     socket.onopen = function() {
 
