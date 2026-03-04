@@ -1,33 +1,42 @@
 import socket
 import threading
 
-HOST = '127.0.0.1'
+HOST = '10.102.14.236'
 PORT = 5001
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((HOST, PORT))
 
 print("Connected to chat server.")
-print("You can start typing messages.")
+print("Type messages and press ENTER")
 
-# Thread to receive messages
+# Receive messages
 def receive_messages():
     while True:
         try:
             message = client.recv(1024)
+
             if not message:
-                print("Disconnected from server")
+                print("Server closed connection")
                 break
+
             print("\nMessage:", message.decode())
+
         except:
             break
 
-# Start receiving thread
 thread = threading.Thread(target=receive_messages)
 thread.daemon = True
 thread.start()
 
-# Main thread handles sending
+# Send messages
 while True:
+
     message = input()
+
+    if message.lower() == "exit":
+        print("Disconnecting...")
+        client.close()
+        break
+
     client.send(message.encode())
