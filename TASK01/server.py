@@ -21,8 +21,20 @@ while True: #the server ll keep connection end
     
     message = data.decode()#binary data convert readable
     print("Client:", message)
+
+    # Exit condition
+    if message.lower() == "exit":
+        print("Client disconnected.")
+        break
     
     reply = input("Server reply: ")
     conn.send(reply.encode())
 
+    if reply.lower() == "exit":
+        print("Server closing connection.")
+        break
+
 conn.close()
+server.close()
+
+print("Connection closed.")
