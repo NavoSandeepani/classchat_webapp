@@ -28,6 +28,8 @@ while True:
             try:
                 message = notified_socket.recv(1024)
                 if not message:
+                    print("Client disconnected")
+
                     sockets_list.remove(notified_socket)
                     clients.remove(notified_socket)
                     notified_socket.close()
@@ -45,7 +47,11 @@ while True:
                 clients.remove(notified_socket)
                 notified_socket.close()
 
+    
+    #Handle socket error
     for notified_socket in exception_sockets:
         sockets_list.remove(notified_socket)
         clients.remove(notified_socket)
         notified_socket.close()
+
+server.close()
