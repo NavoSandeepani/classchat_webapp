@@ -14,6 +14,17 @@ print("Connected to server.")
 while True:
     message = input("You: ")
     client.send(message.encode())
+
+    if message.lower() == "exit":
+        print("Closing connection...")
+        break
     
     data = client.recv(1024)
     print("Server:", data.decode())
+
+    if data.decode().lower() == "exit":
+        print("Server closed the connection.")
+        break
+
+client.close()
+print("Disconnected.")
