@@ -1,15 +1,19 @@
 import asyncio
 import websockets
 import json
-from datetime import datetime
 import uuid
+from datetime import datetime
 
-connected_users = {}
-user_images = {}
+# Store connected users and their profile images
+connected_users = {}   # username -> websocket
+user_images = {}       # username -> image
+
 
 async def handler(websocket):
     username = None
+
     try:
+        # First message must be JOIN
         message = await websocket.recv()
         data = json.loads(message)
 
@@ -17,6 +21,7 @@ async def handler(websocket):
             username = data["username"]
             image = data["image"]
 
+            # Prevent duplicate usernames
             if username in connected_users:
                 await websocket.send(json.dumps({
                     "type": "error",
@@ -29,32 +34,30 @@ async def handler(websocket):
 
             print(f"{username} connected")
 
+            # Confirm join success
             await websocket.send(json.dumps({
                 "type": "join_success"
             }))
 
             await broadcast_users()
 
+        # Listen for further messages
         async for message in websocket:
             data = json.loads(message)
 
+            # Typing indicator
             if data["type"] == "typing":
                 await broadcast({
                     "type": "typing",
                     "username": username
                 }, exclude=username)
-            
-            if data["type"] == "join":
-                connected_users[username] = websocket
-                user_images[username] = data["image"]
 
             if data["type"] == "stop_typing":
                 await broadcast({
                     "type": "stop_typing"
                 })
-            if data["type"] == "message":
-                current_time = datetime.now().strftime("%H:%M")
 
+            # Chat messages
             if data["type"] == "message":
 
                 current_time = datetime.now().strftime("%H:%M")
@@ -70,21 +73,24 @@ async def handler(websocket):
                     "privateTo": data.get("privateTo")
                 }
 
-                # 🔥 PRIVATE MESSAGE
+                # Private message
                 if data.get("privateTo"):
                     target = data["privateTo"]
 
-                    # send to sender
-                    await connected_users[username].send(json.dumps(message_payload))
+                    # Send to sender
+                    await connected_users[username].send(
+                        json.dumps(message_payload)
+                    )
 
-                    # send to target
+                    # Send to receiver
                     if target in connected_users:
-                        await connected_users[target].send(json.dumps(message_payload))
+                        await connected_users[target].send(
+                            json.dumps(message_payload)
+                        )
 
+                # Public message
                 else:
-                    # PUBLIC MESSAGE
-                    await broadcast(message_payload)      
-            
+                    await broadcast(message_payload)
 
     except Exception as e:
         print("Error:", e)
@@ -93,6 +99,7 @@ async def handler(websocket):
         if username and username in connected_users:
             del connected_users[username]
             del user_images[username]
+
             print(f"{username} disconnected")
             await broadcast_users()
 
@@ -123,11 +130,12 @@ async def broadcast(data, exclude=None):
 async def main():
     async with websockets.serve(
         handler,
-        "0.0.0.0",
+        "0.0.0.0",      # allow connections from other laptops
         8765,
-        max_size=10_000_000  # 10MB limit
-):
-        print("WebSocket server running on ws://localhost:8765")
+        max_size=10_000_000
+    ):
+        print("WebSocket server running on port 8765")
         await asyncio.Future()
+
 
 asyncio.run(main())
