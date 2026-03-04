@@ -69,7 +69,7 @@ if (!username) {
 
 document.getElementById("currentUser").textContent = username;
 
-let socket = new WebSocket("ws://localhost:8765");
+let socket = new WebSocket("ws://172.20.10.3:8765");
 
 socket.onopen = function() {
     socket.send(JSON.stringify({
