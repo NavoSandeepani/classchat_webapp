@@ -3,7 +3,7 @@ import threading
 import json
 import sys
 
-HOST = '127.0.0.1'
+HOST = '10.102.14.236'
 PORT = 5002
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
