@@ -3,7 +3,7 @@ import select
 import json
 from datetime import datetime
 
-HOST = '127.0.0.1'
+HOST = '10.102.14.236'
 PORT = 5002
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
